@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/append_session.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/append_session.py"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv *)",
+      "Bash(kaggle *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git mv*)",
+      "Bash(git rm*)",
+      "Bash(ls*)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(unzip *)",
+      "Bash(bash scripts/*)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(nvidia-smi*)",
+      "Bash(command -v*)",
+      "Bash(which *)",
+      "Bash(grep *)",
+      "Bash(find *)"
+    ]
+  }
+}

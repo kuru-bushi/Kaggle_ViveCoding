@@ -1,0 +1,52 @@
+# --- secrets ---
+.env
+.env.local
+.envrc
+*.pem
+**/kaggle.json
+
+# --- data (large) ---
+data/train/*
+data/test/*
+data/tmp/*
+!data/**/.gitkeep
+
+# --- models / weights (large binaries) ---
+models/*.bin
+models/*.pt
+models/*.pth
+models/*.ckpt
+models/*.safetensors
+models/checkpoints/
+
+# --- experiment outputs ---
+submission*.csv
+oof_*.csv
+*.parquet
+!data/**/*.parquet
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- Claude Code local ---
+.claude/settings.local.json
+.claude/.session_state/
+
+# --- session logs (local only, do not commit) ---
+session/*.md
+session/*.jsonl
+!session/.gitkeep
