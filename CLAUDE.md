@@ -13,7 +13,8 @@
 | ディレクトリ | 用途 | 命名 |
 |---|---|---|
 | `overview/` | Kaggle 公式情報の写し（概要・データ・評価・ルール） | `competition.md`, `data.md`, `evaluation.md`, `rules.md` |
-| `knowledge/` | 上位 Kaggler 手法、出力フォーマット、Kaggle 操作手順 | `01_` 〜 番号 prefix |
+| `knowledge/` | 上位 Kaggler 手法、出力フォーマット、Kaggle 操作手順（**Cycle 横断**で参照する一般知識） | `01_` 〜 番号 prefix の md |
+| `knowledge/NN/` | **Cycle NN 専用の調査・提案文書**（採用案・別案・ensemble 手法詳細など） | `knowledge/01/baseline_proposal.md` 等 |
 | `session/` | 会話ログ（hook が自動生成） | `YYYY-MM-DD_live.md`, `YYYY-MM-DD_<sid>.md` |
 | `data/{train,test}/` | Kaggle データ（.gitignore 済） | Kaggle CLI が配置 |
 | `data/tmp/` | 中間ファイル | `last_submission.txt` 等 |
@@ -28,8 +29,20 @@
 
 1サイクル = **データ分析 → 課題抽出 → 解決策提示 → クリティカルな批評 → 選定 → 実装 → report 作成 → Kaggle 提出 → commit**
 
-- サイクルごとに段階的に複雑化（最初はシンプルなベースライン、いきなりアンサンブルしない）
+- サイクルごとに段階的に複雑化（基本方針：最初はシンプル、いきなりアンサンブルしない）
+- **ただしユーザー指示がある場合はその優先**:
+  - **Cycle 01**: days 7th place 解法のうち **Retrieval / Models / Ensemble** の 3 改良を実装 (元 wiki dump 使用)
+    - 詳細: `knowledge/01/baseline_proposal.md`、ensemble: `knowledge/01/ensemble_methods.md`
+    - 軽量 fallback: `knowledge/01/alternative_tfidf_baseline.md`
+  - **Cycle 02**: **Dataset 改良** (cirrussearch wiki dump への切替) — 詳細: `knowledge/02/dataset_improvements.md`
+  - 以降の計画は `task_board.md` を参照
 - サイクル番号で実行スクリプト・レポート・コミットメッセージを紐付ける
+
+### Cycle-specific 文書の置き場規約
+
+- **Cycle NN に強く紐づく** (採用案・別案・ensemble 詳細・hyperparam tuning 結果など) → `knowledge/NN/<title>.md`
+- **Cycle を跨いで参照する** 一般知識 (kaggler 手法サマリ、auth/submission 手順、output_format 等) → `knowledge/<NN>_<title>.md` (直下、番号 prefix で並びを制御)
+- 採用しなかったが将来戻る可能性がある案は `knowledge/NN/alternative_<name>.md` で保存
 
 ## 出力フォーマット規約
 
@@ -70,10 +83,15 @@
 - 新ファイル作成時、機密が含まれそうな拡張子・名前があれば `.gitignore` を追記
 - コード中に API キー / 個人情報を直書きしない（環境変数経由で読む）
 
-## task_board.md の運用
+## 🔑 中断復元の単一情報源: `task_board.md`
 
-- セッション開始時に `task_board.md` を確認し、In Progress / TODO の続きから着手
-- セッション終了時に Done / In Progress / TODO を更新
+**`task_board.md` (リポジトリルート) は本プロジェクトの "single source of truth"**。
+作業計画（全 Cycle ロードマップ + 現サイクル詳細）と進捗（Done / In Progress / TODO）を1ファイルに集約しており、**処理が中断されても、このファイルだけ読めば作業再開できる**ように設計されている。
+
+- **セッション開始時**: 必ず `task_board.md` を最初に開き、「現在のフォーカス」と「In Progress」を確認
+- **作業中**: タスク完了 / 計画変更があれば、その場で `task_board.md` を更新
+- **セッション終了時**: 「現在のフォーカス」「次のアクション」を最新化
+- 中断 → 再開手順は `task_board.md` 末尾の「🔄 中断 → 再開手順」セクション参照
 
 ## session ログ（自動）
 
@@ -85,7 +103,8 @@
 
 ## 作業開始時のチェックリスト
 
-1. `task_board.md` で現状把握
+1. **`task_board.md` を必ず最初に開く** — 現在のフォーカス / 進捗 / 次のアクションを把握
 2. 最新の `report/NN_score_report.md` で前サイクルの結果と「次の打ち手」を確認
-3. `knowledge/` の関連メモを参照
+3. `knowledge/NN/` (該当 Cycle 専用) と `knowledge/` 直下の関連メモを参照
 4. 該当サイクルを進める
+5. **作業中・終了時に `task_board.md` を更新**
