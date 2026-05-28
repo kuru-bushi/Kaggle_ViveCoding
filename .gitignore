@@ -9,7 +9,13 @@
 data/train/*
 data/test/*
 data/tmp/*
+data/train_augmented/*
+data/test_augmented/*
+data/kaggle_official/*
 !data/**/.gitkeep
+
+# Kaggle kernel local scratch (logs, downloaded outputs)
+kaggle/data/
 
 # --- models / weights (large binaries) ---
 models/*.bin
@@ -50,3 +56,7 @@ Thumbs.db
 session/*.md
 session/*.jsonl
 !session/.gitkeep
+
+
+tmp.txt
+new_api_token

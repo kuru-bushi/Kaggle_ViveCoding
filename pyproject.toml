@@ -3,6 +3,8 @@ name = "kaggle-vivecoding"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "accelerate>=1.13.0",
+    "hf-transfer>=0.1.9",
     "ipykernel>=7.2.0",
     "kaggle>=2.1.2",
     "matplotlib>=3.10.9",
@@ -11,5 +13,9 @@ dependencies = [
     "pyarrow>=24.0.0",
     "python-dotenv>=1.2.2",
     "scikit-learn>=1.8.0",
+    "sentencepiece>=0.2.1",
+    "tensorboard>=2.20.0",
+    "torch>=2.12.0",
     "tqdm>=4.67.3",
+    "transformers>=5.9.0",
 ]

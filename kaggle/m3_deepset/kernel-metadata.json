@@ -1,0 +1,18 @@
+{
+  "id": "kunihiro1997/llm-science-exam-01-v1-m3-deepset-squad2",
+  "title": "LLM Science Exam 01 v1 m3 deepset squad2",
+  "code_file": "01_v1_m3_deepset.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": false,
+  "dataset_sources": [
+    "katwooo/deberta-v3-large-squad2"
+  ],
+  "competition_sources": [
+    "kaggle-llm-science-exam"
+  ],
+  "kernel_sources": []
+}

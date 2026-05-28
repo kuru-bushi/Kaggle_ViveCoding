@@ -9,10 +9,24 @@
 
 ## 🎯 現在のフォーカス
 
-**Block B (調査・知識整理)** が大筋完了し、commit 待ち。
-次は **Block C (Cycle 01 実装)** に着手予定（着手前にユーザー確認）。
+**Block C — Cycle 01 v1: 3 モデル単独 submit 完了 (2026-05-28)**
 
-最終更新: 2026-05-27
+| # | Model | Public LB | Private LB | submission ref |
+|---|---|---|---|---|
+| m1 | microsoft/deberta-v3-large (plain) | 0.388056 | 0.378399 | 53093495 |
+| **m2** | OpenAssistant reward-model-deberta-v3-large-v2 | **0.682480** | **0.714337** | 53113415 |
+| m3 | deepset/deberta-v3-large-squad2 | 0.592176 | 0.605449 | 53113423 |
+
+- m1 は前日 (2026-05-27) Notebook 提出。m2 / m3 は本日 push → `kaggle competitions submit -k <kernel> -v 1` で submit。
+- OpenAssistant reward が圧勝 (LB +0.29 vs plain)、reward pretraining が MCQ にも有効。
+- val/LB 相関は強い (順位完全一致)。
+- 学び等は `report/01_score_report.md` 参照。
+
+**次の打ち手** (Cycle 01 v2 以降):
+- Wikipedia retrieval (e5-base + FAISS) を context 注入 → 上限を引き上げる
+- 3 モデル ensemble (`mean()+max()`) を試す（最強の m2 を core にする選択肢含む）
+
+最終更新: 2026-05-28
 
 ---
 
@@ -36,34 +50,43 @@
 ### ✅ Done
 
 - [x] **Block A**: プロジェクト基盤 (uv env, CLAUDE.md, hook, 認証スクリプト, folder skeleton) — commit `724ac6b` (2026-05-26)
+- [x] **Block B**: 調査と知識整理 (overview/4 + knowledge/直下 11 + knowledge/01/3 + knowledge/02/1 + task_board + CLAUDE.md 更新) — commit `bae654f` (2026-05-27)
+- [x] **Block B 追補**: `knowledge/search/00_ensemble_pipeline_origin_validity.md` 追加（ensemble の起源・学術妥当性・上位 5 解法のパイプライン比較）。併せて `knowledge/search/` フォルダ規約を CLAUDE.md に明文化 — 2026-05-28
+- [x] Kaggle CLI 認証 (kaggle.json 配置 + .env 作成、`kaggle competitions list` 動作確認)
+- [x] ML 依存追加 (torch 2.12 +cu130 / transformers 5.9 / accelerate 1.13 / sentencepiece、CUDA OK)
+- [x] HF g-ronimo mirror から train/test parquet → CSV 変換 (train 5400 / test 600 行)
+- [x] `report/01_eda.md` 作成 (データ概観、ラベル分布、テキスト長、サンプル、課題)
+- [x] `report/01_score_report.md` 雛形 (実行後にスコア追記)
+- [x] `01_train_pred.py` 実装 (DeBERTa v3 large MCQ、 KFold CV、--single-fold 対応、score report 自動更新)
+- [x] `scripts/submit.py` 実装 (1日1回ガード、dry-run、--force、timestamp 記録)
+- [x] `scripts/download_data.sh` 実装
 
-### 🚧 In Progress
+### ✅ Done (Block C 追加)
 
-- [ ] **Block B**: 調査と知識整理
-  - [x] overview/ 4 ファイル (competition / data / evaluation / rules)
-  - [x] knowledge/ 直下 11 ファイル (01_overview_trends 〜 11_kaggle_submission)
-  - [x] knowledge/01/ 3 ファイル (baseline_proposal / ensemble_methods / alternative_tfidf_baseline)
-  - [x] knowledge/02/ 1 ファイル (dataset_improvements)
-  - [x] task_board.md (本ファイル)
-  - [x] CLAUDE.md 更新 (knowledge/NN/ 規約 + task_board.md 参照)
-  - [ ] **commit 待ち** (ユーザー承認後)
+- [x] Kaggle 公式データ取得 (新アカウント `kunihiro1997`、train 200 / test 200)
+- [x] 学習スクリプトに loss 可視化 / checkpoint / resume / epoch ログを実装 (ローカル用)
+- [x] CLAUDE.md に「学習時の loss 可視化」「チェックポイント・再開」「Submit code 規約」「学習前確認」規約を明記
+- [x] `kaggle/01_v1_baseline.py` + `kernel-metadata.json` 作成 (no-checkpoint, fp16, T4 想定)
+- [x] m1 (`microsoft/deberta-v3-large`) push & submit (2026-05-27、Public 0.388 / Private 0.378)
+- [x] m2 (`OpenAssistant/reward-model-deberta-v3-large-v2`) Notebook 作成・push・submit (2026-05-28、Public 0.682 / Private 0.714)
+- [x] m3 (`deepset/deberta-v3-large-squad2`) Notebook 作成・push・submit (2026-05-28、Public 0.592 / Private 0.605)
+- [x] `report/01_score_report.md` を 3 モデル比較スコア表で更新
+- [x] **学び**: Code Competition では `kaggle competitions submit -k <kernel> -v <ver> -f submission.csv` 形式が必須（CSV 直接 upload は 400 Bad Request）
+- [x] `submit/` ディレクトリ規約整備 (CLAUDE.md にも追記)、提出 3 ファイルを `submit/01_m{1,2,3}_*/` に保存
+- [x] `report/01_submissions_summary.md` 作成（提出ファイル別の結果まとめ）
+- [x] HF DL 高速化: `hf_transfer` 追加 + `scripts/prefetch_hf_model.py` 新設 + `01_train_pred.py` で env 設定
+  - 計測: WSL2 → HF CDN の素の curl 速度 2.6 MB/s、hf_transfer 経由でも 3.5 MB/s 程度。**根本原因は WSL2 NAT 経路の帯域**で、ライブラリ層では大きく変えられないことが判明（次の打ち手は Windows 側 DL or aria2c 等）
 
-### 🟡 TODO (次にやる: Block C = Cycle 01 実装)
+### 🟡 TODO
 
-- [ ] kaggle 認証 (.env 編集 → `bash scripts/setup_kaggle.sh`)
-- [ ] `scripts/download_data.sh` 作成 → 公式 train.csv / test.csv 取得
-- [ ] `report/01_eda.md`: EDA (data 概観、ラベル分布、テキスト長、サンプル)
-- [ ] Wikipedia subset 取得 (HF `graelo/wikipedia/20230601.en` または STEM only) → `data/tmp/wiki/`
-- [ ] 90-word chunk 分割スクリプト (`knowledge/01/ensemble_methods.md` 参照)
-- [ ] e5-base 埋め込み + FAISS index 構築 (gte-base は Cycle 03 へ繰越)
-- [ ] `microsoft/deberta-v3-large` fine-tune (max_len=256, fp16, accum=8) — 簡略版 1 モデルのみ
-- [ ] TTA 推論 (まず 2 slice: `[0,1-5]`, `[0,6-10]` のみ)
-- [ ] Ensemble (`mean + max`) → `submission.csv` 生成
-- [ ] ローカル MAP@3 CV 計算
-- [ ] `report/01_score_report.md` 自動更新
-- [ ] `scripts/submit.py` 実装 + 1日1回ガード
-- [ ] Kaggle 提出 → LB 確認
-- [ ] commit (`01 baseline ...` 形式、必要なら分割)
+- [x] commit (`01 …` 形式) — Block C 一括
+
+### 🔵 TODO (Cycle 01 v2)
+
+- [ ] Wikipedia subset (HF `graelo/wikipedia/20230601.en` または STEM filter) 取得
+- [ ] 90-word chunk 分割 → e5-base 埋め込み → FAISS index 構築
+- [ ] context 付き MCQ 学習 + 推論
+- [ ] CV / LB を Cycle 01 v1 と比較
 
 ### 🔵 TODO (後で: Cycle 02 — dataset 改良)
 
