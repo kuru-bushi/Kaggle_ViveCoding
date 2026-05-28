@@ -18,6 +18,19 @@ submit/
   再提出するなら `submit/NN_<purpose>_v2/` 等で別ディレクトリにする。
   → 「あの時実際に提出した中身」がいつでも辿れる状態を保つ。
 
+## サイクル単位で「複数ファイル提出」が前提
+
+1 サイクル (`NN`) には **複数の提出ファイル**が含まれる前提で運用する。例: backbone 違い、retrieval 有無、ensemble 構成違い、TTA 設定違い、ablation 対照など。
+Cycle 01 では実際に m1/m2/m3 の 3 ファイルを別 kernel として提出している。
+
+**Claude (Code) はそのサイクルで 1 件でも push する直前に、必ず「Cycle NN 提出状況」表を提示してからユーザー承認を待つ**（CLAUDE.md の同名節を参照）。表に含める列:
+
+| # | submit/ dir | 説明 (backbone / retrieval / ensemble / TTA …) | 提出状況 | sub ref | Public LB | Private LB |
+
+- 「提出状況」は `kaggle competitions submissions <comp>` の実機照会と突き合わせる
+- 提出済 = ✅ / これから提出 = 🟡 / 未提出 = ⬜
+- 表は push 後に必ず更新する
+
 ## 提出履歴（Cycle 01）
 
 | Cycle | dir | submission ref | Public LB | Private LB | Date |

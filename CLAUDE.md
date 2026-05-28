@@ -41,8 +41,32 @@
 1. **使用する GPU は `NvidiaTeslaT4` で良いか？** (デフォルト推奨だが、P100 / TPU を選びたい特別な理由がある場合は別)
 2. 提出メッセージ (例: "01 v1 baseline DeBERTa MCQ")
 3. 1 日提出上限 (Kaggle 5/日, 自主 1/日) に達していないか — `data/tmp/last_submission.txt` で確認
+4. **そのサイクルの「提出予定ファイル × 提出状況」表を必ず提示する** — 詳細は次節
 
 → ユーザーが OK と返したら push + submit。それまでは push しない（Code Competition は kernel commit のたびに quota を消費する）。
+
+### サイクルごとの提出ファイルは複数（必須提示の表）
+
+**前提**: 1 サイクル (`NN` = 01, 02, ...) には複数の提出ファイル（backbone 違い、retrieval 有無、ensemble 構成違い、TTA 設定違い等）が含まれる。Cycle 01 では実際に m1/m2/m3 の **3 ファイル**を別々に提出している。今後の Cycle も同様に複数提出が基本。
+
+**Claude のルール**: そのサイクルで 1 件でも push / submit する直前には、ユーザーに必ず以下の形式で **そのサイクルの全提出予定ファイルの状況表** を提示してから承認を待つこと。
+
+```
+## Cycle NN 提出状況
+
+| # | submit/ dir | 説明 (backbone / retrieval / ensemble / TTA …) | 提出状況 | sub ref | Public LB | Private LB |
+|---|---|---|---|---|---|---|
+| f1 | submit/NN_<purpose>/ | <説明> | ✅ 提出済 | <ref> | 0.xxx | 0.xxx |
+| f2 | submit/NN_<purpose>/ | <説明> | 🟡 これから提出 | -    | -     | -     |
+| f3 | submit/NN_<purpose>/ | <説明> | ⬜ 未提出 (このセッション外) | - | - | - |
+```
+
+- 「提出予定ファイル」は `knowledge/NN/` の採用案 (例: `knowledge/02/cycle01_retrospective_and_v2_plan.md`) と `submit/NN_*/` の現状から導く
+- 「提出状況」は `kaggle competitions submissions <comp>` で実機照会した結果と突き合わせる（記憶や docs だけに頼らない）
+- これから push するファイルは 🟡 にして、ユーザーがその行で OK と言ったら push
+- 提出後は表を更新し、commit メッセージにも反映
+
+> 理由: 「単発で 1 ファイル提出」という頭で push すると、サイクル全体の進捗把握が壊れる（残り何件か / どれが ensemble か / どれが ablation 対照か が見えなくなる）。表を毎回出すことで「全体計画 vs 現実」のズレが即座に検出できる。Cycle 01 の振り返りで「提出ファイル一覧と backbone の対応が取れない」事故が起きた実例あり (2026-05-28)。
 
 ### 作業開始時のチェックリスト
 

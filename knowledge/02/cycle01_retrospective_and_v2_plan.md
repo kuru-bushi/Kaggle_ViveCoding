@@ -10,15 +10,17 @@
 
 ## 1. Cycle 01 の事実関係
 
-### 1-1. 提出 3 件のスコア（再掲）
+### 1-1. 提出 3 件のスコア（再掲、提出物との対応つき）
 
-| # | backbone | val MAP@3 | Public LB | Private LB | wall (Kaggle T4) |
-|---|---|---|---|---|---|
-| m1 | microsoft/deberta-v3-large (plain) | 0.4708 | 0.388056 | 0.378399 | ~3.4 min |
-| **m2** | OpenAssistant/reward-model-deberta-v3-large-v2 | **0.7958** | **0.682480** | **0.714337** | ~3.4 min |
-| m3 | deepset/deberta-v3-large-squad2 | 0.6458 | 0.592176 | 0.605449 | ~3.4 min |
+| # | submit/ dir | Kaggle kernel slug | submission ref | submit date | backbone (HF repo) | val MAP@3 | Public LB | Private LB | wall (Kaggle T4) |
+|---|---|---|---|---|---|---|---|---|---|
+| m1 | `submit/01_m1_microsoft/` | `kunihiro1997/llm-science-exam-01-v1-baseline` | 53093495 | 2026-05-27 | `microsoft/deberta-v3-large` (plain) | 0.4708 | 0.388056 | 0.378399 | ~3.4 min |
+| **m2** | `submit/01_m2_openassistant/` | `kunihiro1997/llm-science-exam-01-v1-m2-openassistant-reward` | 53113415 | 2026-05-28 | `OpenAssistant/reward-model-deberta-v3-large-v2` | **0.7958** | **0.682480** | **0.714337** | ~3.4 min |
+| m3 | `submit/01_m3_deepset/` | `kunihiro1997/llm-science-exam-01-v1-m3-deepset-squad2` | 53113423 | 2026-05-28 | `deepset/deberta-v3-large-squad2` | 0.6458 | 0.592176 | 0.605449 | ~3.4 min |
 
-詳細・コード差分: `submit/01_*/`, `report/01_score_report.md`, `report/01_submissions_summary.md`。
+- 3 件とも **コード本体 (`01_v1_*.py`) は完全に同一**。違いは `kernel-metadata.json` の `dataset_sources` 1 行のみで、それが backbone の HF repo に対応する Kaggle Dataset を指す。
+- Public LB に乗っているのはこの 3 件のみ（`kaggle competitions submissions kaggle-llm-science-exam` で実機照会済）。multi-model ensemble は **未提出**（Cycle 03 へ）。
+- 詳細・コード差分: `submit/01_*/`, `report/01_score_report.md`, `report/01_submissions_summary.md`。
 
 ### 1-2. 観察された事実
 
