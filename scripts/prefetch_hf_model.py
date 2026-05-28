@@ -25,7 +25,10 @@ import shutil
 import sys
 import time
 
-# MUST be set before importing huggingface_hub for hf_transfer backend to engage
+# MUST be set before importing huggingface_hub.
+# HF_XET_HIGH_PERFORMANCE is the new var (huggingface_hub >=1.0); HF_HUB_ENABLE_HF_TRANSFER
+# is kept for backward compat with older releases.
+os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
 
 from huggingface_hub import snapshot_download  # noqa: E402

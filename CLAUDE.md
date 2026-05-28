@@ -68,6 +68,30 @@
 
 > 理由: 「単発で 1 ファイル提出」という頭で push すると、サイクル全体の進捗把握が壊れる（残り何件か / どれが ensemble か / どれが ablation 対照か が見えなくなる）。表を毎回出すことで「全体計画 vs 現実」のズレが即座に検出できる。Cycle 01 の振り返りで「提出ファイル一覧と backbone の対応が取れない」事故が起きた実例あり (2026-05-28)。
 
+### HF / モデル重みのダウンロード — 最速の方法（必ずこれを使う）
+
+WSL2 環境では多くの DL 経路が rate limit / NAT で 1–4 MB/s に張り付く。実測比較の結果、**最速かつ最も安定するのは `scripts/prefetch_hf_model.py` 経由の `snapshot_download` (Xet / hf_transfer + parallel workers + safetensors 優先)** 1 択。
+
+**手順** (HuggingFace モデルを落とす時は常にこれ):
+
+```bash
+~/.local/bin/uv run python scripts/prefetch_hf_model.py \
+    --repo <hf-user>/<model-name> \
+    --dest data/tmp/<model-name> \
+    --workers 8
+```
+
+- `--workers 8` で並列ファイル取得、Xet/hf_transfer で 1 ファイル内チャンク並列も同時に効く
+- safetensors を優先取得（`.bin` 同時掲載のリポジトリは半分の DL 量で済む）。`.safetensors` が無いリポは自動で `.bin` にフォールバック
+- 既に dest にウェイトがあれば skip。`--force` で再 DL
+- スクリプトは `HF_XET_HIGH_PERFORMANCE=1` と `HF_HUB_ENABLE_HF_TRANSFER=1` を冒頭で setdefault するので、ユーザーは何も設定しなくて良い
+
+**Kaggle Dataset / コンペデータの場合**: `kaggle datasets download -d <ref> -p <dest> --unzip` または `kaggle competitions download -c <comp> -p <dest>` (CLI 経由、HF とは別経路)。
+
+**やってはいけない**: 単発 `curl` / `wget` で巨大 weight を取る (`snapshot_download` 経路より基本的に遅く、エラー時の resume も無い)、Windows 側 `curl.exe` を経由させる (`/mnt/c/` 越しの write が overhead になり、計測上むしろ遅い)。
+
+> 高頻度に必要なら HF account のアクセストークンを `.env` の `HF_TOKEN` に置く (HF unauthenticated request の rate-limit を解除でき、上記スクリプトが自動で使う)。
+
 ### 作業開始時のチェックリスト
 
 1. **`task_board.md` を必ず最初に開く** — 現在のフォーカス / 進捗 / 次のアクションを把握

@@ -25,9 +25,9 @@ import sys
 import time
 from pathlib import Path
 
-# Engage hf_transfer (Rust, parallel-chunk) for HF downloads. Must be set before
-# `huggingface_hub` / `transformers` imports. Falls back gracefully if hf_transfer
-# is not installed.
+# Engage high-performance HF download backend (Xet / hf_transfer). Must be set
+# before `huggingface_hub` / `transformers` imports.
+os.environ.setdefault("HF_XET_HIGH_PERFORMANCE", "1")
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
 
 import matplotlib
