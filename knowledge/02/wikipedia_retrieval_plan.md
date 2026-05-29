@@ -2,7 +2,7 @@
 
 > Cycle 02 の改善案 A（retrieval 注入）について、コーパス → chunk → embedder → index → 注入方式 → 評価の各段で
 > 選択肢を比較し、**v1 で採用する 1 系統** と **v2 で試す代替案** を確定する。
-> 全体方針と他案との位置付けは [[cycle01_retrospective_and_v2_plan]]、dump 切替詳細は [[dataset_improvements]]。
+> 全体方針と他案との位置付けは [[cycle02_4_model_plan]]、dump 切替詳細は [[dataset_improvements]]。
 
 最終更新: 2026-05-28
 
@@ -198,7 +198,7 @@
 
 ## 関連
 
-- [[cycle01_retrospective_and_v2_plan]] — 02 の全体方針 (本案の上位)
+- [[cycle02_4_model_plan]] — 02 の全体方針 (本案の上位)
 - [[dataset_improvements]] — cirrussearch dump 詳細 (本案の corpus 層)
 - `knowledge/01/baseline_proposal.md` — days 7th 派生のもう少しコンパクトな retrieval 設計
 - `knowledge/01/ensemble_methods.md` — Cycle 03 で再利用する mean+max ensemble
