@@ -9,24 +9,25 @@
 
 ## 🎯 現在のフォーカス
 
-**Block C — Cycle 01 v1: 3 モデル単独 submit 完了 (2026-05-28)**
+**Block C — Cycle 01 v1: 3 モデル単独 + ensemble submit 完了 (2026-05-29)**
 
-| # | Model | Public LB | Private LB | submission ref |
+| # | Model / 構成 | Public LB | Private LB | submission ref |
 |---|---|---|---|---|
 | m1 | microsoft/deberta-v3-large (plain) | 0.388056 | 0.378399 | 53093495 |
-| **m2** | OpenAssistant reward-model-deberta-v3-large-v2 | **0.682480** | **0.714337** | 53113415 |
+| m2 | OpenAssistant reward-model-deberta-v3-large-v2 | 0.682480 | 0.714337 | 53113415 |
 | m3 | deepset/deberta-v3-large-squad2 | 0.592176 | 0.605449 | 53113423 |
+| **ens** | **m1+m2+m3 mean+max blending (days 7th)** | **0.684144** | **0.714858** | **53157358** |
 
-- m1 は前日 (2026-05-27) Notebook 提出。m2 / m3 は本日 push → `kaggle competitions submit -k <kernel> -v 1` で submit。
+- m1 は 2026-05-27、m2/m3 は 05-28、ensemble は 05-29 提出。`kaggle competitions submit -k <kernel> -v 1` 形式。
 - OpenAssistant reward が圧勝 (LB +0.29 vs plain)、reward pretraining が MCQ にも有効。
-- val/LB 相関は強い (順位完全一致)。
-- 学び等は `report/01_score_report.md` 参照。
+- **ensemble (mean+max) が最良 single (m2) を Public +0.0017 / Private +0.0005 で上回りボード最良**。ほぼランダムの microsoft を含めても max 項が強モデルの確信を保持し引き下げ無し（単純 mean は劣後）。val (mean+max)=0.7958。
+- val/LB 相関は強い (順位完全一致)。学び・R1-R5 考察は `report/01_score_report.md` 参照。
 
 **次の打ち手** (Cycle 01 v2 以降):
-- Wikipedia retrieval (e5-base + FAISS) を context 注入 → 上限を引き上げる
-- 3 モデル ensemble (`mean()+max()`) を試す（最強の m2 を core にする選択肢含む）
+- Wikipedia retrieval (e5-base + FAISS) を context 注入 → 上限を引き上げる（固有名詞・数値設問の取りこぼしが現状の主なボトルネック）
+- ensemble に retrieval/TTA 軸を足して多様性を増やす（Cycle 03）
 
-最終更新: 2026-05-28
+最終更新: 2026-05-29
 
 ---
 
@@ -74,6 +75,7 @@
 - [x] **学び**: Code Competition では `kaggle competitions submit -k <kernel> -v <ver> -f submission.csv` 形式が必須（CSV 直接 upload は 400 Bad Request）
 - [x] `submit/` ディレクトリ規約整備 (CLAUDE.md にも追記)、提出 3 ファイルを `submit/01_m{1,2,3}_*/` に保存
 - [x] `report/01_submissions_summary.md` 作成（提出ファイル別の結果まとめ）
+- [x] **3 モデル ensemble (mean+max blending)** Notebook 作成・push・submit (2026-05-29、Public 0.684144 / Private 0.714858、ref 53157358)。`submit/01_ensemble_m1m2m3/` にスナップショット保存、`report/01_score_report.md` に R1-R5 考察追記
 - [x] HF DL 高速化: `hf_transfer` 追加 + `scripts/prefetch_hf_model.py` 新設 + `01_train_pred.py` で env 設定
   - 計測: WSL2 → HF CDN の素の curl 速度 2.6 MB/s、hf_transfer 経由でも 3.5 MB/s 程度。**根本原因は WSL2 NAT 経路の帯域**で、ライブラリ層では大きく変えられないことが判明（次の打ち手は Windows 側 DL or aria2c 等）
 

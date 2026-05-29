@@ -36,7 +36,8 @@ Cycle 01 では実際に m1/m2/m3 の 3 ファイルを別 kernel として提�
 | Cycle | dir | submission ref | Public LB | Private LB | Date |
 |---|---|---|---|---|---|
 | 01 | `01_m1_microsoft/` | 53093495 | 0.388056 | 0.378399 | 2026-05-27 |
-| 01 | `01_m2_openassistant/` | 53113415 | **0.682480** | **0.714337** | 2026-05-28 |
+| 01 | `01_m2_openassistant/` | 53113415 | 0.682480 | 0.714337 | 2026-05-28 |
 | 01 | `01_m3_deepset/` | 53113423 | 0.592176 | 0.605449 | 2026-05-28 |
+| 01 | `01_ensemble_m1m2m3/` | 53157358 | **0.684144** | **0.714858** | 2026-05-29 |
 
-詳細スコアと考察は `report/01_score_report.md` を参照。
+詳細スコアと考察は `report/01_score_report.md` を参照。ensemble = 3 モデルの mean+max blending (days 7th)、最良 single (m2) を僅差で更新。

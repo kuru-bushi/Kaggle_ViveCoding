@@ -48,6 +48,54 @@ flowchart LR
 > 補足: 公式 train.csv (200 行) 80/20 split で eval、3 epochs / fp16 / T4 / wall ~3.4min。
 > Cycle 01 v1 段階では **retrieval なし / TTA なし / ensemble なし** の単一モデル比較。次 Cycle で `mean()+max()` ensemble に進む際の baseline。
 
+### 3 モデル ensemble (mean+max blending, 2026-05-29 提出)
+
+3 モデル (microsoft / OpenAssistant / deepset) を 1 Notebook で各々 fine-tune し、softmax 確率を **days 7th-place の `mean + max` blending** で集約 (`knowledge/01/ensemble_methods.md`)。retrieval/TTA はまだ無く、3 モデル × 各 1 予測を id ごとに集約。
+
+| 集約 | val MAP@3 (80/20, val=40) | Public LB | Private LB | submission ref |
+|---|---|---|---|---|
+| m2 単独 (最良 single, 参考) | 0.7958 | 0.682480 | 0.714337 | 53113415 |
+| ensemble (mean) | 0.7917 | — | — | — |
+| **ensemble (mean+max)** ← 提出 | **0.7958** | **0.684144** | **0.714858** | **53157358** |
+
+> この ensemble run 内の per-model val: deepset 0.6458 / OpenAssistant 0.7958 / microsoft **0.4042**（単独 submit 時の m1 val 0.4708 とズレるのは fresh 学習 + val=40 のノイズ）。
+> **mean+max は最良 single (m2) を Public +0.0017 / Private +0.0005 上回り、ボード最良を更新**。ほぼランダムの microsoft (val 0.4042) を含めても `max` 項が強モデルの確信を保持するため引き下げが起きなかった。単純 `mean` (0.7917) は弱モデルに薄まり mean+max に劣後。
+
+## スコア考察 (R1-R5) — ensemble (mean+max)
+
+### R1. ベースラインスコア
+- ensemble (mean+max) val MAP@3: **0.7958** (公式 train.csv 200 行を 80/20 split、val=40 行、SEED=42 で 3 モデル共通分割)
+- 同 val での内訳: per-model = deepset 0.6458 / OpenAssistant 0.7958 / microsoft 0.4042、ensemble(mean)=0.7917、ensemble(mean+max)=0.7958
+- 同分布信号の正体: 公式 train から取った 40 行の hold-out。Kaggle test と同じ「STEM 5 択 MCQ」だが **40 行と小さくノイズが大きい**
+
+### R2. Kaggle スコアの特徴
+- 採点母集団: 公式 test (visible 200 行 + 隠し test)。Public ≈ 公開部分、Private ≈ 残り + 隠し test
+- Public LB: **0.684144** / Private LB: **0.714858**
+- MAP@3 スケール: 5 択 top-3 のランダム下限 ≈ 0.367、上位陣 0.92+。本提出は中位帯
+- Public < Private (差 +0.0307): 公開部分の方が辛い。m2 単独でも同方向 (+0.0319) で、**この test 集合では Public 側に難設問が偏在**する一貫した性質
+
+### R3. スコアが上下するデータ特性
+retrieval 無しパイプラインのため、単独 3 モデルと同じ失敗様式を継承する (本 run の誤答内訳は未取得だが構造的に同一クラス):
+- ✅ 上がる: 短い prompt + well-known な物理・化学用語の選択肢 (parametric memory に存在)
+- ⚠️ 下がる: 数値・年代・固有名詞を問う設問 (Wikipedia 由来 long-tail、context 注入が無いと当てられない)
+- ⚠️ 下がる: 選択肢間の編集距離が小さい設問 (同一用語の微妙な定義違い)
+- ⚠️ 下がる: 数式・記号を含む設問 (tokenizer 段で情報損失)
+- ensemble 特有: 3 モデルが揃って間違える設問 (= 知識が全モデルの parametric memory に無い) は mean+max でも救えない
+
+### R4. データレベル比較考察
+- val 0.7958 は Private 0.7149 とほぼ一致するが Public 0.6841 は大きく下回る
+- val=40 と小さいため、val は「OpenAssistant が得意な設問」に偏ってスコアが高く出やすい (m2 単独 val と同値 0.7958 がその証拠)
+- val で当てて Kaggle で落ちる設問群: 固有名詞・数値系 (val 40 行には少数しか含まれないが test では比率が高い) → retrieval 不在の弱点
+- val で落ちて Kaggle で当たる設問群: 運要素 (val=40 のノイズ)。Private が val と一致したのは偶然寄り
+
+### R5. スコア差 (Δ)
+- Δ_Public = 0.684144 − 0.7958 = **−0.1117**
+- Δ_Private = 0.714858 − 0.7958 = **−0.0809**
+- ensemble vs 最良 single (m2): Public **+0.001664** / Private **+0.000521** (僅差だがボード最良更新)
+- 解釈: val は test より +0.08〜0.11 楽観的。Public Δ が Private Δ より大きいのは R2 の「Public 側に難設問偏在」と整合
+- Δ を詰める仮説: 楽観の主因は **(a) val=40 のサイズ起因ノイズ** と **(b) retrieval 不在による固有名詞・数値設問の取りこぼし**。
+- 検証実験案: ① val を KFold or held-out 200 行に拡張して val 分散を縮小 (Cycle 02+) ② Wikipedia retrieval を入れて固有名詞設問の正答率が R3 の「下がる」群でどれだけ改善するかを ablation (Cycle 01 v2)
+
 ### 学習曲線
 
 ローカル学習スクリプト用の保存先:
