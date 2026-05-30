@@ -29,15 +29,25 @@ Cycle 02 で初めて入れる **RAG (Retrieval-Augmented Generation / ここで
 ### 📘 各部品の役割
 
 - **chunk 分割**: Wikipedia 記事は長いので、検索の単位に切る。大きすぎると検索精度が落ち、小さすぎると文脈不足（[`../search/02_rag_accuracy_quantitative_impact.md`](../search/02_rag_accuracy_quantitative_impact.md) §3.3）。本案は **90 word + 3 sentence overlap**（隣接 chunk と少し重ねて境界の取りこぼしを防ぐ）。
-- **embedder（埋め込みモデル）**: 文章を「意味が近いものは近いベクトルになる」固定長ベクトルに変換するモデル。本案は `intfloat/e5-base-v2`。**設問側と文書側を同じ embedder で変換**するから、ベクトルの近さ＝意味の近さとして検索できる。
+- **embedder（埋め込みモデル）**: 文章を「意味が近いものは近いベクトルになる」固定長ベクトルに変換するモデル。本案は `intfloat/e5-base-v2`。**設問側と文書側を同じ embedder で変換**するから、ベクトルの近さ＝意味の近さとして検索できる。**具体例**: 設問 *"What causes ocean tides?"* をベクトル化すると、Wikipedia "Tide" 記事の *"...the gravitational pull of the Moon..."* という chunk のベクトルとは**近く**（cos 類似度が高い）、無関係な "Photosynthesis" 記事の chunk とは**遠く**なる。だから top-k 検索で前者が引かれる。
   - 📘 embedder の質は効く: 同一パイプラインで embedder だけ差し替えた ablation で Public MAP@3 が 0.03 ぶれた実例あり（[`../search/02_rag_accuracy_quantitative_impact.md`](../search/02_rag_accuracy_quantitative_impact.md) §1.3）。本コンペで 0.03 は数百順位差。
 - **FAISS index**: 数百万 chunk のベクトルから「query に近い top-k」を高速に探す近似最近傍探索 (ANN) ライブラリ。全件と総当たりすると遅いので、IVF（ベクトル空間をクラスタに区切り、近いクラスタだけ探す）で近似する。
-- **context 注入**: 引いた top-5 chunk を設問の前に貼り付けて DeBERTa に渡す。これが「参考書を開いて解く」状態。
+- **context 注入**: 引いた top-5 chunk を設問の前に貼り付けて DeBERTa に渡す。これが「参考書を開いて解く」状態。**具体例**（§1 の注入方式で 1 行を組み立てると）:
+
+  ```
+  [CTX] Radium was discovered in 1898 by Marie and Pierre Curie ... It is a
+        radioactive alkaline earth metal ... (top-5 chunk を連結)
+  [QUESTION] In what year was the element radium discovered?
+  [CHOICE] 1898
+  ```
+  この `[CTX]…[QUESTION]…[CHOICE]…` を選択肢 5 本ぶん作って MCQ head に通す（(1) [[cycle01_1_models_overview]] §2 の 5 本入力と同じ形）。closed-book では `[CTX]` が空だったところに、根拠文が入るのが Cycle 02 の差分。
 - **(後段オプション) re-ranker**: → §2 v2。検索の top-k を **より精密なモデル (cross-encoder)** で並べ直してノイズを除く。
 
 ### 📘 ablation（アブレーション）— 純効果の測り方
 
 「ある要素を入れた/外した以外は全部同じ」2 つを走らせ、スコア差をその要素の純効果とみなす実験法。Cycle 02 では **「context あり」「context なし」の 2 サブ提出**を必ず作り、その差 = retrieval の純効果として (2) の仮説 H2 を検証する。これをやらないと「retrieval が効いたのか他の変更が効いたのか」が永久に分からなくなる。
+
+**具体例（数値で）**: backbone も chunk も max_length も全部同じにして、(a) context あり = Public 0.78、(b) context なし = Public 0.68 が出たら、**Δ = +0.10 が retrieval の純効果**と読める。逆に (b) も 0.68 のまま (a) が 0.69 にしか上がらなければ「retrieval はこの設定ではほぼ効いていない」と判定でき、次は embedder や top-k を疑う、と切り分けが進む。
 
 ---
 
