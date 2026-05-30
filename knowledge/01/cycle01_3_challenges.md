@@ -17,6 +17,14 @@ Cycle 01 の最大の課題は **「retrieval が無い」** こと。なぜそ�
 - **parametric memory（パラメトリック記憶）**: 事前学習でモデルの**重み（パラメータ）の中に圧縮して焼き込まれた知識**。「暗記」に近い。Cycle 01 の 3 モデルはこれだけに頼って答えていた（= closed book、参考書を見ずに記憶だけで解く）。
 - **retrieval（検索＝non-parametric memory）**: テスト時に**外部の文書集合（ここでは Wikipedia dump）から関連箇所を引いてきて、設問と一緒にモデルに渡す**こと。「参考書を開いて解く」(open book) に相当。引いた文章を context として入力に足す。
 
+**具体例（同じ設問で closed-book と open-book を比べる）**:
+
+> 設問: *"In what year was the element radium discovered?"*
+> 選択肢: (a) 1898 (b) 1911 (c) 1869 (d) 1923 (e) 1905
+
+- **closed-book（Cycle 01 の 3 モデル）**: m2 は重みの中の曖昧な記憶だけで判断するため、"1898" と "1911"（Curie のノーベル賞年）で迷って外しうる。年号のような long-tail fact は parametric memory で曖昧になりやすい。
+- **open-book（Cycle 02 で入れる retrieval）**: Wikipedia "Radium" 記事から *"Radium was discovered in 1898 by Marie and Pierre Curie."* という一文を引いて設問の前に貼る → モデルは **根拠文と照合して (a) 1898 を選べる**。これが「参考書を開いて解く」状態。
+
 ### 📘 なぜこのコンペで retrieval が必然なのか
 
 [`../search/03_rag_why_it_works.md`](../search/03_rag_why_it_works.md) の整理（一次ソース確認済み）によると、本コンペは構造的に open-book 向きだった:
@@ -31,9 +39,9 @@ Cycle 01 の最大の課題は **「retrieval が無い」** こと。なぜそ�
 ### 📘 注意: retrieval は「入れれば必ず勝つ」ではない
 
 同じ調査が反例も挙げている（(4) のリスク設計の根拠）:
-- retrieval が irrelevant/誤情報を渡すと逆に精度低下（distraction）→ reranker でノイズ除去が要る。
-- context を**長くしすぎると**、retrieval が完璧でも LLM 自体の性能が劣化（13.9–85% の劣化報告, arXiv 2510.05381）→ 必要最小限だけ渡す。
-- head（超有名）知識では parametric で足りるので gain は出ない。
+- retrieval が irrelevant/誤情報を渡すと逆に精度低下（distraction）→ reranker でノイズ除去が要る。**具体例**: 上の radium 設問で、検索が誤って別元素 "radon"（綴りが近い）の記事 chunk を引くと、無関係な年号が context に混ざり、closed-book なら当てられた行をかえって外す。
+- context を**長くしすぎると**、retrieval が完璧でも LLM 自体の性能が劣化（13.9–85% の劣化報告, arXiv 2510.05381）→ 必要最小限だけ渡す。**具体例**: 正解の一文だけ渡せば当たる設問に、top-50 chunk（数千 word）を丸ごと貼ると、肝心の一文が埋もれて attention が拡散し精度が落ちる。
+- head（超有名）知識では parametric で足りるので gain は出ない。**具体例**: "What is gravity?" のような頻出概念は m2 が暗記済みなので、retrieval を足しても上がらない（落ちはしないが手間が無駄）。
 
 → だから Cycle 02 では「とりあえず大量に詰める」ではなく **適量を狙って入れ、効果を ablation で測る**設計にする（(4)）。
 
@@ -45,7 +53,7 @@ Cycle 01 の最大の課題は **「retrieval が無い」** こと。なぜそ�
 
 - **① backbone の事前知識の差がそのままスコア差になっている**: m2 ≫ m3 ≫ m1 の差 ≒「事前知識を選択肢に転写する能力」の差。Wikipedia 由来の固有名詞・年代・公式・定数を訓練時に見せていないので、知識質の差が直接スコアに出る。
   - (2) §4 R3 の「下がる設問特性」(数値・年代・固有名詞) と整合。
-- **② retrieval が無いことが上限を決めている**（最大のボトルネック）: MCQ の選択肢を判別するには問題文と Wiki テキストの突き合わせが必要だが、現状は backbone の暗記頼り。
+- **② retrieval が無いことが上限を決めている**（最大のボトルネック）: MCQ の選択肢を判別するには問題文と Wiki テキストの突き合わせが必要だが、現状は backbone の暗記頼り。**具体例**: §0 の radium 設問のように「根拠文さえ引ければ確実に当たる」行を、closed-book では曖昧な暗記で取りこぼしている。定量的には §0 の通り no-RAG 天井 ~0.74 に対し我々の m2 は 0.68 で止まっている。
   - (2) §6 R5 の仮説 H2（long-tail 設問で落ちている）と直接対応。Cycle 02 v1 の「context あり/なし」ablation で検証可能。
 - **③ val/LB ギャップ ≈ 0.08–0.11 で意思決定の信号が不安定**: (2) §5 R4 で「val=40 のサンプリングノイズ + 楽観バイアス + Public 50% の分布偏り」の合成と分解した。
   - 詰める手: (a) KFold val=200 化（仮説 H1）、(b) retrieval 導入（H2）、(c) train 増量（Cycle 04 候補）。

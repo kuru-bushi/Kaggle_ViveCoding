@@ -27,6 +27,17 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 - 直感: 「自信のある順に 3 つ出す。1 位で当てれば満点、外して 2・3 位で拾えば部分点、3 つとも外せば 0」。
 - だから **2 位・3 位の保険を上手に使う**ことが地味に効く（top-1 accuracy とは別物）。`[acc]`(top-1 正解率) と混同しないこと。出典: [`../search/02_rag_accuracy_quantitative_impact.md`](../search/02_rag_accuracy_quantitative_impact.md) 冒頭の単位注意。
 
+**具体例（1 設問のスコア）**: 正解が選択肢 **C** の設問で、予測を自信順に並べたとき:
+
+| 出した予測（自信が高い順） | 正解 C の位置 | この行のスコア |
+|---|---|---|
+| `[C, A, B]` | 1 位 | **1.0** |
+| `[A, C, B]` | 2 位 | **0.5** |
+| `[A, B, C]` | 3 位 | **0.333** |
+| `[A, B, D]` | 圏外（上位 3 に C 無し） | **0.0** |
+
+**具体例（複数行の平均）**: 仮に 4 設問でこの 4 パターンが 1 つずつ起きたら、MAP@3 = (1.0 + 0.5 + 0.333 + 0.0) / 4 = **0.458**。「1 位で当てた行の割合」とは別物で、2・3 位で拾った部分点も効いていることが分かる。
+
 ### 📘 用語: val / Public LB / Private LB の 3 種類のスコア
 
 | スコア | 採点データ | ラベルが見えるか | 役割 |
@@ -60,7 +71,10 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 
 - **val 集合の由来**: 公式 train.csv (200 行) を seed=42 で 80/20 split。val=40 行、train=160 行。
 - **val が "Kaggle テスト似" である理由**: 公式 train.csv と公式 test.csv は **同じ生成プロセス** (GPT-3.5 が Wikipedia の science 記事から 5 択を生成) で作られている。分布的に最も近い同分布信号。出典: [`../search/03_rag_why_it_works.md`](../search/03_rag_why_it_works.md) §A.1。
-- **val のサイズ制約（📘 サンプリング誤差）**: 40 行は小さい。MAP@3 は行ごとのスコアの平均なので、母比率の推定と同じく **サンプル数が少ないほど値がブレる**。二項分布近似で **95%CI は概算 ±0.07**。これは「真の実力が同じでも、引いた 40 行次第で val が ±0.07 揺れうる」という意味で、**val スコア単体を 0.01 単位で比べるのは危険**。→ この小ささが後述 R5 の Δ の大半を説明しうる（仮説 H1）。
+- **val のサイズ制約（📘 サンプリング誤差）**: 40 行は小さい。MAP@3 は行ごとのスコアの平均なので、母比率の推定と同じく **サンプル数が少ないほど値がブレる**。二項分布近似で **95%CI は概算 ±0.07**。これは「真の実力が同じでも、引いた 40 行次第で val が ±0.07 揺れうる」という意味で、**val スコア単体を 0.01 単位で比べるのは危険**。
+  - **具体例**: m2 の val 0.7958 は、ざっくり 40 行中およそ 32 行を 1 位正解できた水準（32/40 = 0.80）。もし同じ実力のまま**別の 40 行**を引いていたら、1 位正解は概ね **29〜35 行**に揺れ、val は **約 0.72〜0.88** に散らばりうる。
+  - **だから何が言えるか**: m2 (0.796) と m3 (0.646) の **0.15 差**は誤差幅 (±0.07) を超えるので実力差として信用できる。一方、もし 2 案が val 0.796 vs 0.78 のような **0.01〜0.02 差**だったら、それは誤差に埋もれるので val だけで優劣を決めてはいけない。
+  - → この小ささが後述 R5 の Δ の大半を説明しうる（仮説 H1）。
 
 ---
 
@@ -77,10 +91,10 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 - Private LB: 残り 50% + 隠し test 部分。Late Submission ではコンペ終了後に解禁。
 - 値域 0.0–1.0。本コンペ上位陣は 0.92+（[`../search/02_rag_accuracy_quantitative_impact.md`](../search/02_rag_accuracy_quantitative_impact.md)）。我々の m2 は 0.68 でまだ大きな伸びしろ。
 
-3 モデルに共通する特徴:
-- **Public < val が一貫**: val=40 と test=200 では test の方がトピックが広く → val より辛い。
-- **m2/m3 で Public < Private、m1 で Public > Private**: m2/m3 は test 内部で Public 採点側（公開 50%）の方が辛い分布の偏りがある。m1 は plain backbone でスコア低位、Public/Private 差はノイズ範囲。
-- **m2 で Private がむしろ val に近い**（0.7143 vs 0.7958）。test サンプル数が増えると val の楽観バイアスが薄まることを示唆。
+3 モデルに共通する特徴（**実数で確認**）:
+- **Public < val が一貫**: 例えば m2 は val 0.796 → Public 0.682（−0.11）、m3 は val 0.646 → Public 0.592（−0.05）、m1 も val 0.471 → Public 0.388（−0.08）と、3 モデルとも val より Public が低い。理由: val=40 は train と**同じ生成プロセス**から引いた「見慣れた 40 行」なのに対し、test=200 はトピックがより広く未見 → 一貫して test の方が辛い。
+- **m2/m3 で Public < Private、m1 で Public > Private**: m2 は Public 0.682 **<** Private 0.714、m3 は Public 0.592 **<** Private 0.605。つまり test 200 行のうち「公開 50%（＝Public 採点側）」に、**たまたま辛い設問が多めに**入っていたと読める。一方 m1 だけは Public 0.388 **>** Private 0.378 と逆転しているが、差は 0.01 と小さく**ノイズ範囲**（m1 は plain backbone で全体に低位）。
+- **m2 で Private がむしろ val に近い**: Private 0.714 と val 0.796 の差は **0.08** で、Public との差 **0.11** より小さい。採点行数が Public（≈100 行）より Private（残り + 隠し test で多い）の方が多いぶん、val=40 の「たまたま当たった分の上振れ（楽観バイアス）」がならされて、より実力値に近づくため。
 
 ### 📘 過学習シグナルの読み方（Public vs Private）
 
@@ -94,16 +108,16 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 
 **仮説: スコアが上がる設問特性**
 - **頻出概念を問う設問**（例: "What is gravity?", "Define DNA"）: parametric memory（モデルの重みに焼き込まれた知識）に強く入っているため retrieval 無しでも当たる。Mallen et al. 2023 の "head knowledge" に対応（[`../search/03_rag_why_it_works.md`](../search/03_rag_why_it_works.md) §F.3）。
-- **選択肢間の意味距離が大きい設問**: 正解と distractor（誤答選択肢）が明らかに別カテゴリ。reward model (m2) はこの「明らかに変な答え」を弾く preference 判定が強い。
+- **選択肢間の意味距離が大きい設問**: 正解と distractor（誤答選択肢）が明らかに別カテゴリ。**具体例**: 正解 "photosynthesis" に対し distractor が "gravity" / "mitosis" / "erosion" のように**別分野の単語**で並ぶ設問。reward model (m2) はこの「明らかに場違いな答え」を弾く preference 判定が強い。
 - **prompt が短く言い換えが少ない設問**: tokenizer が崩しにくい、attention が拡散しない。
 - **reward model pretrain (m2) で見たような対話/選好フォーマットに近い設問**: m2 が m1/m3 に圧勝する説明要因。
 
 **仮説: スコアが下がる設問特性**（= retrieval で救えると期待する設問群）
-- **数値・年代・固有名詞を問う設問**（例: "When was X discovered?"）: long-tail facts。Mallen et al. 2023（PopQA, [`../search/03_rag_why_it_works.md`](../search/03_rag_why_it_works.md) §C）の通り parametric memory では tail で精度が ~15% にまで落ちる。
-- **選択肢間の編集距離が小さい設問**（微妙な定義違い）: retrieval した context との突き合わせが無いと判別不能。
-- **数式・記号・化学式を含む設問**: DeBERTa の tokenizer が記号を細かく分割 → 情報損失。
-- **複数エンティティを関連付ける設問**（X と Y の関係）: single-hop で答えられず、parametric では文脈統合に失敗。
-- **200 行 train で見ていない特殊用語を含む設問**: domain-specific terminology の未学習。
+- **数値・年代・固有名詞を問う設問**（例: "When was radium discovered?" → 答え 1898 のような年号）: long-tail facts。Mallen et al. 2023（PopQA, [`../search/03_rag_why_it_works.md`](../search/03_rag_why_it_works.md) §C）の通り parametric memory では tail で精度が ~15% にまで落ちる。
+- **選択肢間の編集距離が小さい設問**（微妙な定義違い）: **具体例**: 正解 "covalent bond" に対し distractor が "coordinate covalent bond" / "covalent bonding" / "polar covalent bond" のように **1〜2 語しか違わない**並び。retrieval した context との突き合わせが無いと、表記が似ているだけに判別不能。
+- **数式・記号・化学式を含む設問**（**具体例**: "E = mc²" の意味や "H₂SO₄ + NaOH →" の生成物を問う設問）: DeBERTa の tokenizer が `²` や下付き数字・記号を細かく分割 → 情報損失。
+- **複数エンティティを関連付ける設問**（X と Y の関係。**具体例**: "What is the relationship between entropy and the second law of thermodynamics?"）: single-hop で答えられず、parametric では文脈統合に失敗。
+- **200 行 train で見ていない特殊用語を含む設問**（**具体例**: "endoplasmic reticulum" のような専門語が設問・選択肢に出る）: domain-specific terminology の未学習。
 
 **val=40 と test=200 の構造的差**
 - val=40 は公式 train 由来のサブセットで、train で「同じ生成プロセスのサンプル」を見ているので overfit 気味の信号。
