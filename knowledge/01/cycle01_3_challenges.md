@@ -73,7 +73,7 @@ Cycle 01 の最大の課題は **「retrieval が無い」** こと。なぜそ�
 | E | epochs 3→5–8 へ伸ばす（200 行では未収束の可能性） | +0.01–0.03 | 低 | (none) | 同 pipeline で安価に試せるので A の後に実験 |
 | F | max_length 384→512 へ拡大（retrieval context 用の余裕） | +0.01–0.03 | 低 | A | A 必須。B 用にも有用 |
 | G | 推論時 TTA (4 slice = 異なる context 切り出し) | +0.01–0.02 | 中 | A | Cycle 03 で本格化、02 はスキップ |
-| H | m2 + m3 + m1 の ensemble (mean / max) | +0.01–0.04 | 低 | (none) | retrieval 効果と切り分け難しいので Cycle 03 に分離 |
+| H | m2 + m3 + m1 の ensemble (mean / max) | +0.01–0.04 | 低 | (none) | **最小版 (mean+max) は Cycle 01 で提出済**: ens ref 53157358, Public 0.684144 / Private 0.714858 ＝ m2 単独比 +0.0017/+0.0005 と**上積み僅少**（暗記モデル 3 つは多様性が乏しい）。retriever/corpus 軸の多様性を足した本格 ensemble は Cycle 03 へ。詳細 → [[cycle01_1_models_overview]] §3.5 |
 | I | re-ranker (bge-reranker-v2-m3) を retrieval 後段に追加 | +0.02–0.04 | 中 | A | Cycle 02 v2 で検討（§0 の distraction 対策） |
 | J | context-window-aware sliding (chunk ごとに推論 → 集約) | +0.02–0.05 | 中 | A | F 採用後の自然な次手、Cycle 02 v2 |
 | K | bf16 → fp16 のみ T4 は持つ、precision tuning | (微) | 低 | (none) | Cycle 01 で fp16 確定済、これ以上は不要 |

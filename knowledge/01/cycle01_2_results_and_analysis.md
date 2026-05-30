@@ -4,7 +4,7 @@
 >
 > 本ファイルの守備範囲: **3 提出のスコアを [`../README.md`](../README.md) の R1–R5 規約に従ってデータレベルで考察する**。モデルの素性は (1)、そこから導く打ち手は (3) に分離。
 
-最終更新: 2026-05-29（`cycle01_retrospective_and_v2_plan.md` を 4 分割して作成）
+最終更新: 2026-05-30（§7 に ensemble (mean+max, ref 53157358) の R1–R5 を追記。実機照会済）
 
 > 規約と本セクションの対応: R1 (§2) / R2 (§3) / R3 (§4) / R4 (§5) / R5 (§6)。
 
@@ -56,8 +56,11 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 | Model | val MAP@3 | Public LB | Private LB | sub ref |
 |---|---|---|---|---|
 | m1 `microsoft/deberta-v3-large` | 0.4708 | 0.388056 | 0.378399 | 53093495 |
-| **m2 `OpenAssistant/reward-model-deberta-v3-large-v2`** | **0.7958** | **0.682480** | **0.714337** | 53113415 |
+| **m2 `OpenAssistant/reward-model-deberta-v3-large-v2`** | **0.7958** | 0.682480 | 0.714337 | 53113415 |
 | m3 `deepset/deberta-v3-large-squad2` | 0.6458 | 0.592176 | 0.605449 | 53113423 |
+| **ens** m1+m2+m3 mean+max blending | 0.7958 | **0.684144** | **0.714858** | 53157358 |
+
+> R2–R6（§2–§6）は単独 3 モデルの考察。**4 件目の ensemble (mean+max) の R1–R5 考察は §7 にまとめた**（一次記録は `report/01_score_report.md`「3 モデル ensemble」節）。
 
 ---
 
@@ -176,6 +179,41 @@ Mean Average Precision @ 3。**各設問の正解はちょうど 1 つ**なの�
 - Cycle 02 v1 で **Δ_Public を −0.05 以下に縮める**（retrieval 導入 + KFold val=200 化で同時達成を狙う）。
 - 失敗時の切り分け: KFold 化単独で Δ が縮まなければ retrieval 効果は別軸、retrieval 単独で縮まなければ val 設計の問題、と判定。
 - → これらの仮説を打ち手に落とす整理は **→ [[cycle01_3_challenges]]**、実験の具体構成は **→ [[cycle02_4_model_plan]]**。
+
+---
+
+## 7. 4 件目の提出 — 3 モデル ensemble (mean+max) の R1–R5
+
+単独 3 モデルのあとに提出した ensemble（ref 53157358, 2026-05-29）の考察。**構成（submit した中身）は [[cycle01_1_models_overview]] §3.5**、一次記録は `report/01_score_report.md`「3 モデル ensemble」節。ここは R1–R5 の要点のみ。
+
+### R1（ベースライン）
+- ensemble (mean+max) val MAP@3 = **0.7958**（公式 train 200 行を SEED=42 で 80/20 split、3 モデル共通の val=40）。
+- この run 内 per-model val: deepset 0.6458 / OpenAssistant **0.7958** / microsoft **0.4042**。ensemble(mean)=0.7917、ensemble(mean+max)=**0.7958**。
+- ⚠️ val=0.7958 は m2 単独と**同値** → val 上は ensemble の上乗せがゼロに見える（val=40 では m2 が当てる 40 行を ensemble も当て、それ以上は測れない）。
+
+### R2（Kaggle スコア）
+- Public **0.684144** / Private **0.714858**。
+- Public < Private（差 **+0.0307**）。m2 単独でも同方向（+0.0319）で、**この test 集合では Public 採点側に難設問が偏在**する性質が ensemble でも一貫。
+
+### R3（上下するデータ特性）
+- retrieval 無しなので**単独モデルと同じ失敗様式を継承**（数値・年代・固有名詞・記号・編集距離小で落ちる。§4 参照）。
+- **ensemble 特有**: 3 モデルが揃って外す設問（知識が全モデルの parametric memory に無い）は mean+max でも救えない。多様性が「同じ知識を別表現で持つ」だけでは long-tail は埋まらない → retrieval が要る根拠（[[cycle01_3_challenges]] §0）。
+
+### R4（データレベル比較）
+- val 0.7958 は Private 0.7149 とほぼ一致するが Public 0.6841 を大きく上回る。
+- val=40 が「m2 が得意な設問」に偏ってスコアが高く出やすく（m2 単独 val と同値がその証拠）、test=200 の long-tail 比率を反映できていない。
+
+### R5（差 Δ・**ensemble の純効果**）
+
+| 指標 | 値 |
+|---|---|
+| Δ_Public = Public − val | 0.684144 − 0.7958 = **−0.1117** |
+| Δ_Private = Private − val | 0.714858 − 0.7958 = **−0.0809** |
+| **ensemble − 最良 single (m2)** Public | 0.684144 − 0.682480 = **+0.001664** |
+| **ensemble − 最良 single (m2)** Private | 0.714858 − 0.714337 = **+0.000521** |
+
+- **ensemble の純効果は LB +0.0005〜+0.0017 と僅少**。ボード最良は更新したが、これは「同型の暗記モデルを 3 つ束ねた」だけで多様性が乏しいため。Δ_Public が Δ_Private より大きいのは §3 R2 の「Public 側に難設問偏在」と整合。
+- **示唆**: ほぼ無力な m1（val 0.4042）を混ぜても下がらなかったのは `max` 項が m2 の確信を保持したから。単純 `mean`(0.7917) は弱モデルに薄まり劣後 → 弱モデル込みなら **mean+max が頑健**。ただし**大きく伸ばすには backbone 暗記の多様化では足りず、retriever/corpus 軸の多様性（Cycle 02→03）が必要**（[[cycle01_3_challenges]] 打ち手 H）。
 
 ---
 

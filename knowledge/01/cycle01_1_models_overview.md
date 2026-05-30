@@ -5,25 +5,26 @@
 >
 > 本ファイルの守備範囲: **Cycle 01 で提出した 3 モデルが「何者」で、なぜ性能差が出る構造だったか**。スコアそのものの分析は (2) に分離。
 
-最終更新: 2026-05-29（`cycle01_retrospective_and_v2_plan.md` を 4 分割して作成）
+最終更新: 2026-05-30（ensemble 提出 ref 53157358 を反映。`kaggle competitions submissions kaggle-llm-science-exam` で実機照会済）
 
 ---
 
-## 1. 提出 3 件の対応表
+## 1. 提出 4 件の対応表
 
-3 件とも **コード本体 (`01_v1_*.py`) は完全に同一**。違うのは `kernel-metadata.json` の `dataset_sources` 1 行だけで、それが backbone（事前学習済みの重み）に対応する Kaggle Dataset を指す。**つまりこの 3 件は「同じパイプラインに違う脳みそを差し込んだ」対照実験**になっている。
+単独 3 件（m1/m2/m3）は **コード本体 (`01_v1_*.py`) が完全に同一**で、違うのは `kernel-metadata.json` の `dataset_sources` 1 行だけ（backbone に対応する Kaggle Dataset を指す）。**この 3 件は「同じパイプラインに違う脳みそを差し込んだ」対照実験**。4 件目の ensemble は、その 3 backbone を 1 Notebook 内で順次学習し、softmax 確率を **mean+max blending** で集約したもの。
 
-| # | submit/ dir | Kaggle kernel slug | sub ref | submit date | backbone (HF repo) | val MAP@3 | Public LB | Private LB | wall (Kaggle T4) |
+| # | submit/ dir | Kaggle kernel slug | sub ref | submit date | backbone / 構成 | val MAP@3 | Public LB | Private LB | wall (Kaggle T4) |
 |---|---|---|---|---|---|---|---|---|---|
 | m1 | `submit/01_m1_microsoft/` | `kunihiro1997/llm-science-exam-01-v1-baseline` | 53093495 | 2026-05-27 | `microsoft/deberta-v3-large` (plain) | 0.4708 | 0.388056 | 0.378399 | ~3.4 min |
-| **m2** | `submit/01_m2_openassistant/` | `…-01-v1-m2-openassistant-reward` | 53113415 | 2026-05-28 | `OpenAssistant/reward-model-deberta-v3-large-v2` | **0.7958** | **0.682480** | **0.714337** | ~3.4 min |
+| **m2** | `submit/01_m2_openassistant/` | `…-01-v1-m2-openassistant-reward` | 53113415 | 2026-05-28 | `OpenAssistant/reward-model-deberta-v3-large-v2` | **0.7958** | 0.682480 | 0.714337 | ~3.4 min |
 | m3 | `submit/01_m3_deepset/` | `…-01-v1-m3-deepset-squad2` | 53113423 | 2026-05-28 | `deepset/deberta-v3-large-squad2` | 0.6458 | 0.592176 | 0.605449 | ~3.4 min |
+| **ens** | `submit/01_ensemble_m1m2m3/` | `…-01-v1-ensemble-m1m2m3-meanmax` | 53157358 | 2026-05-29 | m1+m2+m3 **mean+max blending** (days 7th 流) | 0.7958 | **0.684144** | **0.714858** | ~10 min (3 model 逐次) |
 
-> ⚠️ スコアの**意味・考察 (R1–R5)** はこの表では扱わない。Public/Private LB の母集団の説明、val=40 のサンプリング誤差、過学習シグナルの読み方は **→ [[cycle01_2_results_and_analysis]]** に集約。ここは「どのモデルがどんな素性か」だけ。
+> ⚠️ スコアの**意味・考察 (R1–R5)** はこの表では扱わない。Public/Private LB の母集団の説明、val=40 のサンプリング誤差、過学習シグナルの読み方、ensemble の純効果は **→ [[cycle01_2_results_and_analysis]]** に集約。ここは「どのモデルがどんな素性か」だけ。
 
-- Public LB に乗っているのはこの 3 件のみ（`kaggle competitions submissions kaggle-llm-science-exam` で実機照会済）。
-- multi-model ensemble は **未提出**（Cycle 03 へ）。
-- 詳細・コード差分: `submit/01_*/`, `report/01_score_report.md`, `report/01_submissions_summary.md`。
+- Public LB に乗っているのはこの 4 件（`kaggle competitions submissions kaggle-llm-science-exam` で実機照会済、2026-05-30 時点）。
+- **ensemble は最良 single (m2) を Public +0.0017 / Private +0.0005 で僅かに上回り、ボード最良を更新**。ただし val は m2 と同値 0.7958（後述のとおり、ほぼ無力な m1 を含んでも `max` 項が強モデルの確信を保持するため下がらなかった）。
+- 詳細・コード差分: `submit/01_*/`, `report/01_score_report.md`（ensemble の R1–R5 考察あり）, `report/01_submissions_summary.md`。
 
 ---
 
@@ -123,6 +124,29 @@ microsoft/deberta-v3-large（共通の出発点 = m1 そのもの）
 - 中間事前学習: **SQuAD2 で抽出型 QA**。「文章（context）を読み、質問の答えに当たるスパンを文中から抜き出す」タスク。SQuAD2 は「答えが文中に無い」ケースも含むので、**根拠の有無を判断する型**も持つ。
 - なぜ中位か: 「文章を根拠に答える型」は本コンペ（Wikipedia 由来設問）と親和性が高いが、Cycle 01 では **まだ retrieval を入れていない**ので、肝心の「読むべき文章 (context)」を与えていない。QA の型を持っているのに材料が無い状態 → m1 よりは強いが m2 には及ばない（val 0.6458 / Public 0.592）。
   - → この「m3 は context を与えれば化ける可能性」が Cycle 02 で retrieval を入れる動機の一つ。詳細 → [[cycle01_3_challenges]]。
+
+---
+
+## 3.5. 4 件目の提出 — 3 モデル ensemble（mean+max blending）
+
+単独 3 件のあと、同じ 3 backbone を束ねた ensemble を 1 件提出した（ref 53157358, 2026-05-29）。**submit した中身（構成）**は次のとおり:
+
+- **コード**: `submit/01_ensemble_m1m2m3/01_v1_ensemble_m1m2m3.py`。1 つの Notebook 内で m1→m2→m3 を**逐次** fine-tune（モデル間で `del` + `torch.cuda.empty_cache()` を挟み T4 16GB に収める）。学習設定は単独 3 件と同一。
+- **共通 split**: 3 モデルとも **同一の 80/20 split（SEED=42）** を共有 → val を揃えて比較可能にしている。
+- **集約方式 = mean+max blending（days 7th 流、`knowledge/01/ensemble_methods.md`）**: 各モデルの softmax 確率を id・選択肢ごとに集約する。
+
+  ```
+  score(id, option) = mean_models(softmax_prob) + max_models(softmax_prob)
+  ```
+  - `mean` は 3 モデルの平均（多数決的に安定させる）、`max` は「どれか 1 モデルが強く確信した選択肢」を拾う項。両者の和を取る。
+  - 単純平均ではなく days 7th place の構成をそのまま再利用（ユーザー指示 2026-05-29）。
+
+- **この run 内の val 内訳**: per-model = deepset 0.6458 / OpenAssistant **0.7958** / microsoft **0.4042**（単独 submit 時の m1 val 0.4708 とズレるのは fresh 学習 + val=40 のノイズ）。ensemble(mean)=0.7917、**ensemble(mean+max)=0.7958**。
+- **結果**: **Public 0.684144 / Private 0.714858**。最良 single (m2) を Public +0.0017 / Private +0.0005 で僅かに上回り、ボード最良を更新。
+  - **示唆**: ほぼランダムに近い m1（val 0.4042）を混ぜても落ちなかったのは、`max` 項が強モデル（m2）の確信を保持するため。単純 `mean`(0.7917) は弱モデルに薄まって mean+max に劣後した → 弱モデルを含む blending では **mean だけより mean+max の方が頑健**、という実証。
+  - スコアの R1–R5 考察は **→ [[cycle01_2_results_and_analysis]] §7**、一次記録は `report/01_score_report.md`「3 モデル ensemble」節。
+
+> 📌 補足: この ensemble は当初「Cycle 03 で本格化」と位置づけていたが、Cycle 01 のうちに mean+max 版を 1 本提出済み。Cycle 03 で狙うのは **retriever/corpus/backbone の多様性を増やした上での** ensemble であり、本件はその前段の最小版（[[cycle01_3_challenges]] 打ち手 H 参照）。
 
 ---
 
