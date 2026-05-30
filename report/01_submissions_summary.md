@@ -3,17 +3,19 @@
 > 各提出 (`submit/01_*/`) について、出した実物の構成と Kaggle 上の結果を 1 ファイルずつ整理する。
 > 比較・批評・次手は `report/01_score_report.md` を参照。
 
-最終更新: 2026-05-28
+最終更新: 2026-05-30（ensemble 提出 ref 53157358 を反映。`kaggle competitions submissions kaggle-llm-science-exam` 実機照会済）
 
-## 概要 (3 提出の集計)
+## 概要 (4 提出の集計)
 
-| # | dir | backbone (HF) | val MAP@3 | Public LB | Private LB | sub ref | submit date |
+| # | dir | backbone / 構成 | val MAP@3 | Public LB | Private LB | sub ref | submit date |
 |---|---|---|---|---|---|---|---|
 | m1 | `submit/01_m1_microsoft/` | `microsoft/deberta-v3-large` | 0.4708 | 0.388056 | 0.378399 | 53093495 | 2026-05-27 |
-| **m2** | `submit/01_m2_openassistant/` | `OpenAssistant/reward-model-deberta-v3-large-v2` | **0.7958** | **0.682480** | **0.714337** | 53113415 | 2026-05-28 |
+| **m2** | `submit/01_m2_openassistant/` | `OpenAssistant/reward-model-deberta-v3-large-v2` | **0.7958** | 0.682480 | 0.714337 | 53113415 | 2026-05-28 |
 | m3 | `submit/01_m3_deepset/` | `deepset/deberta-v3-large-squad2` | 0.6458 | 0.592176 | 0.605449 | 53113423 | 2026-05-28 |
+| **ens** | `submit/01_ensemble_m1m2m3/` | m1+m2+m3 **mean+max blending** | 0.7958 | **0.684144** | **0.714858** | 53157358 | 2026-05-29 |
 
-共通構成: T4 ×1 / fp16 / 80-20 split / 3 epoch / batch=2 × grad_accum=8 / `AutoModelForMultipleChoice` / **retrieval なし / TTA なし / ensemble なし**。
+単独 3 件 (m1/m2/m3) の共通構成: T4 ×1 / fp16 / 80-20 split / 3 epoch / batch=2 × grad_accum=8 / `AutoModelForMultipleChoice` / **retrieval なし / TTA なし / ensemble なし**。
+4 件目 (ens) は同じ 3 backbone を 1 Notebook で逐次学習し、softmax 確率を mean+max で集約（retrieval/TTA はまだ無し）。**ボード最良は ens の Public 0.684144 / Private 0.714858**。
 
 ---
 
@@ -79,6 +81,33 @@
 
 ---
 
+## ens — 3 モデル ensemble (mean+max blending) ★ボード最良
+
+- **submit dir**: `submit/01_ensemble_m1m2m3/`
+- **code**: `01_v1_ensemble_m1m2m3.py`
+- **kernel**: `kunihiro1997/llm-science-exam-01-v1-ensemble-m1m2m3-meanmax`
+- **title**: `LLM Science Exam 01 v1 ensemble m1m2m3 meanmax`
+- **dataset_sources**: `radek1/deberta-v3-large-hf-weights` + `nags98/openassistantreward-model-deberta-v3-large-v2` + `katwooo/deberta-v3-large-squad2`（3 backbone 同時マウント）
+- **submission ref**: `53157358`
+- **submit date**: 2026-05-29
+- **submit message**: `01 v1 ensemble m1+m2+m3 mean+max blending (days 7th, val MAP@3=0.7958)`
+- **val MAP@3**: 0.7958（mean+max）／ 参考: ensemble(mean)=0.7917、run 内 per-model = m1 0.4042 / m2 0.7958 / m3 0.6458
+- **Public LB**: **0.684144**（m2 単独比 +0.001664）
+- **Private LB**: **0.714858**（m2 単独比 +0.000521）
+- **wall time on Kaggle T4**: ~10 min（3 モデルを逐次学習、間で `del`+`empty_cache`）
+
+**構成（submit した中身）**: 1 Notebook 内で m1→m2→m3 を順次 fine-tune（学習設定は単独 3 件と同一、SEED=42 の共通 80/20 split）。各モデルの softmax 確率を id・選択肢ごとに **`score = mean_models(prob) + max_models(prob)`**（days 7th place の集約、`knowledge/01/ensemble_methods.md`）で集約し top-3 を提出。
+
+**意図**: 「強い single (m2) を確立したうえで、まず最小コストの ensemble で上積みを測る」。多様性軸（retriever/corpus/backbone）の本格追加は Cycle 02→03。
+
+**所見**:
+- **最良 single (m2) を Public +0.0017 / Private +0.0005 で僅かに上回りボード最良を更新**。ただし上積みは僅少。
+- val は m2 と同値 0.7958（val=40 では m2 の正答行を ensemble も当て、それ以上を測れない）。
+- ほぼ無力な m1（val 0.4042）を混ぜても下がらなかったのは `max` 項が m2 の確信を保持するため。単純 `mean`(0.7917) は弱モデルに薄まって劣後 → **弱モデル込みでは mean+max が頑健**。
+- R1–R5 の詳細考察は `report/01_score_report.md`「3 モデル ensemble」節、および `knowledge/01/cycle01_2_results_and_analysis.md` §7。
+
+---
+
 ## 横断的な学び
 
 1. **val ↔ LB 相関は強い**: val 順位 (m2 > m3 > m1) と LB 順位が完全一致、スケール感も保たれている → 以降の Cycle で val を意思決定に使える。
@@ -89,4 +118,4 @@
 ## 次の打ち手
 
 `report/01_score_report.md` 「次の打ち手」セクション参照。
-要点: Cycle 01 v2 で Wikipedia retrieval を m2 に注入、Cycle 03 で 3 モデル ensemble。
+要点: 3 モデルの mean+max ensemble は **提出済み（ens, 上積み僅少）**。次は Cycle 02 で Wikipedia retrieval を m2 に注入し long-tail 設問を取りに行く（暗記モデルの ensemble だけでは伸びないことが ens で判明）。Cycle 03 で retriever/corpus/backbone の多様性を増やした上での ensemble に拡張。

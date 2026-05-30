@@ -11,6 +11,7 @@
 > - 数値根拠 → [`02_rag_accuracy_quantitative_impact.md`](02_rag_accuracy_quantitative_impact.md)
 > - なぜ効くか → [`03_rag_why_it_works.md`](03_rag_why_it_works.md)
 > - 作り方・改善 → [`04_rag_build_and_iterate.md`](04_rag_build_and_iterate.md)
+> - LLM への入り方・フォーマット・取捨選択 → [`06_how_llm_consumes_rag.md`](06_how_llm_consumes_rag.md)
 
 ---
 

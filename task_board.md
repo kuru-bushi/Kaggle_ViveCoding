@@ -53,6 +53,7 @@
 - [x] **Block A**: プロジェクト基盤 (uv env, CLAUDE.md, hook, 認証スクリプト, folder skeleton) — commit `724ac6b` (2026-05-26)
 - [x] **Block B**: 調査と知識整理 (overview/4 + knowledge/直下 11 + knowledge/01/3 + knowledge/02/1 + task_board + CLAUDE.md 更新) — commit `bae654f` (2026-05-27)
 - [x] **Block B 追補**: `knowledge/search/00_ensemble_pipeline_origin_validity.md` 追加（ensemble の起源・学術妥当性・上位 5 解法のパイプライン比較）。併せて `knowledge/search/` フォルダ規約を CLAUDE.md に明文化 — 2026-05-28
+- [x] **Block B 追補2**: RAG×LLM 学習教材を `knowledge/search/` に追加 — `07_rag_llm_relationship_for_beginners.md`（RAG と LLM の関係を図中心・初心者向けに解説、読む順番ガイド付き）+ `08_rag_ensemble_design_and_selection.md`（RAG 付き複数 LLM のアンサンブル設計・モデル選定基準、LLM Ensemble survey arXiv 2502.18036 の before/during/after 分類・RAG-Fusion・MoA・LTRR で補強）。既存 05/06/00 を土台に再構成 — 2026-05-30
 - [x] Kaggle CLI 認証 (kaggle.json 配置 + .env 作成、`kaggle competitions list` 動作確認)
 - [x] ML 依存追加 (torch 2.12 +cu130 / transformers 5.9 / accelerate 1.13 / sentencepiece、CUDA OK)
 - [x] HF g-ronimo mirror から train/test parquet → CSV 変換 (train 5400 / test 600 行)

@@ -140,7 +140,8 @@ retrieval 無しパイプラインのため、単独 3 モデルと同じ失敗�
 - ✅ ベースライン score 取得: 達成 (Public LB 0.388-0.682 のレンジで確定)
 - ✅ ensemble の前提 = 3 モデル単独スコア: 達成 (m2 が ensemble の core 候補と判明)
 - ❌ Wikipedia retrieval: 未実施 → Cycle 01 v2 へ
-- ❌ TTA / mean+max ensemble: 未実施 → Cycle 03 へ
+- ✅ mean+max ensemble: **実施・提出済**（ens ref 53157358, Public 0.684144 / Private 0.714858。本レポート「3 モデル ensemble」節）。ただし上積みは m2 単独比 +0.0017/+0.0005 と僅少
+- ❌ TTA / 多様性を増やした本格 ensemble: 未実施 → Cycle 03 へ
 
 ## 学び (3 モデル単独 submit から)
 
